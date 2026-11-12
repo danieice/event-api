@@ -6,6 +6,7 @@ import { buildDataSourceOptions } from './config/database.config';
 import { envValidationSchema } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { EventsModule } from './modules/events/events.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -14,6 +15,7 @@ import { UsersModule } from './modules/users/users.module';
     TypeOrmModule.forRootAsync({ useFactory: buildDataSourceOptions }),
     UsersModule,
     AuthModule,
+    EventsModule,
   ],
   // every route requires a JWT unless marked @Public()
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
