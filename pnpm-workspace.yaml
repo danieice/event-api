@@ -1,2 +1,8 @@
 allowBuilds:
   '@parcel/watcher': true
+  builds: true
+permissions:
+  '@scarf/scarf':
+    build: true
+  builds:
+    skills: true
