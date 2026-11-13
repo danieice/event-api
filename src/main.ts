@@ -3,9 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Render sits behind a proxy; without this every request looks like it comes from the proxy's IP
+  app.set('trust proxy', 1);
 
   app.setGlobalPrefix('api');
   app.enableCors();
@@ -16,6 +20,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+    app.useGlobalFilters(new AllExceptionsFilter());
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Event Management API')
@@ -26,6 +31,8 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig), {
     swaggerOptions: { persistAuthorization: true },
   });
+
+  
 
   await app.listen(app.get(ConfigService).getOrThrow('PORT'));
 }
