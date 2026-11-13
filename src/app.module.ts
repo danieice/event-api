@@ -7,6 +7,7 @@ import { envValidationSchema } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { EventsModule } from './modules/events/events.module';
+import { RegistrationsModule } from './modules/registrations/registrations.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { UsersModule } from './modules/users/users.module';
     UsersModule,
     AuthModule,
     EventsModule,
+    RegistrationsModule,
   ],
   // every route requires a JWT unless marked @Public()
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
