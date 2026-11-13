@@ -199,6 +199,9 @@ importers:
       class-validator:
         specifier: ^0.15.1
         version: 0.15.1
+      dotenv:
+        specifier: ^18.0.10
+        version: 18.0.10
       joi:
         specifier: ^18.3.2
         version: 18.3.2
@@ -248,9 +251,6 @@ importers:
       '@types/supertest':
         specifier: ^7.0.0
         version: 7.2.1
-      dotenv:
-        specifier: ^18.0.10
-        version: 18.0.10
       jest:
         specifier: ^30.0.0
         version: 30.5.2(@types/node@24.19.2)(supports-color@8.1.1)(ts-node@10.9.2(@types/node@24.19.2)(typescript@6.0.3))
