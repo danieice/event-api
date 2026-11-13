@@ -1,132 +1,186 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Event Management API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+REST API for an event platform: users create accounts, publish events, and register to attend. Built with NestJS, TypeScript, PostgreSQL (Supabase) and TypeORM, deployed on Render.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+- **API base URL:** https://event-api-ss2i.onrender.com/api
+- **Swagger docs:** https://event-api-ss2i.onrender.com/docs
+- **Health check:** https://event-api-ss2i.onrender.com/api/health
 
-## Description
+> Hosted on Render's free tier, which sleeps after 15 minutes of inactivity. The first request after that can take up to a minute.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Tech stack
 
-## Project setup
+NestJS 12, TypeScript, PostgreSQL on Supabase, TypeORM 1.x with migrations, Passport JWT, bcryptjs, class-validator, Joi, Swagger (OpenAPI), `@nestjs/throttler`, Render.
 
-```bash
-$ pnpm install
-```
+## Features
 
-## Compile and run the project
+- Account registration and login with JWT authentication
+- Event CRUD; only the owner can update or delete an event
+- Paginated event listing with search and an "upcoming only" filter
+- Event registration and cancellation, with duplicate and capacity protection that holds under concurrent requests
+- A list of the events each user is registered for
+- Rate limiting on login and register
+- Consistent error responses and a database-aware health check
+
+## Running locally
+
+**Prerequisites:** Node.js 22, pnpm 12, and a PostgreSQL database (a free Supabase project works).
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+git clone https://github.com/danieice/event-api.git
+cd event-api
+pnpm install
+cp .env.example .env    # then fill in the values
+pnpm migration:run
+pnpm start:dev
 ```
 
-## Run tests
+The API runs on http://localhost:3000/api and Swagger on http://localhost:3000/docs.
+
+## Environment variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Yes | Secret used to sign tokens, at least 32 characters |
+| `JWT_EXPIRES_IN` | No | Token lifetime, default `1d` |
+| `PORT` | No | Port to listen on, default `3000` |
+| `NODE_ENV` | No | `development`, `production` or `test` |
+
+All variables are validated at startup. The app refuses to boot if any are missing or malformed.
+
+Generate a secret with:
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-## Deployment
+## Database setup
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+1. Create a Supabase project.
+2. Open **Connect → Direct → Session pooler** and copy the URI into `DATABASE_URL`.
+3. Run `pnpm migration:run`.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+The session pooler is used because Supabase's direct connection is IPv6-only on free projects, while Render only supports IPv4 outbound.
+
+**Schema**
+
+| Table | Purpose | Key constraints |
+|---|---|---|
+| `users` | Accounts | Unique email; password stored as a bcrypt hash |
+| `events` | Events and their owner | `ends_at > starts_at`, `capacity > 0`, cascades on owner deletion |
+| `registrations` | Who is attending what | Unique `(user_id, event_id)`, cascades on event or user deletion |
+
+**Migration commands**
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm migration:generate src/database/migrations/SomeName   # create from entity changes
+pnpm migration:run                                         # apply pending migrations
+pnpm migration:revert                                      # undo the last migration
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Schema changes only happen through migrations; `synchronize` is disabled.
 
-## Observability
+## Using the API
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+Every endpoint except register, login and health requires a token: `Authorization: Bearer <token>`.
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+**In Swagger:** run `POST /auth/login`, copy the `accessToken`, click **Authorize**, paste the token (without `Bearer`), and every protected endpoint becomes callable.
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+### Endpoints
 
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Create an account |
+| POST | `/api/auth/login` | Log in and receive a token |
+| GET | `/api/auth/me` | Current user's profile |
+| POST | `/api/events` | Create an event |
+| GET | `/api/events` | List events (`page`, `limit`, `upcoming`, `search`) |
+| GET | `/api/events/mine` | Events created by the current user |
+| GET | `/api/events/:id` | Event details, including spots left |
+| PATCH | `/api/events/:id` | Update an event (owner only) |
+| DELETE | `/api/events/:id` | Delete an event (owner only) |
+| POST | `/api/events/:eventId/registrations` | Register for an event |
+| DELETE | `/api/events/:eventId/registrations/me` | Cancel your registration |
+| GET | `/api/registrations/me` | Events you're registered for |
+| GET | `/api/health` | API and database status |
+
+### Example
 
 ```bash
-$ npx @nestjs/observe link
+BASE=https://event-api-ss2i.onrender.com/api
+
+curl -X POST $BASE/auth/register -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","fullName":"Your Name","password":"a-strong-password"}'
+
+curl -X POST $BASE/events -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <token>" \
+  -d '{"title":"Tech Meetup","description":"Talks and networking","location":"Douala",
+       "startsAt":"2026-12-10T17:00:00Z","endsAt":"2026-12-10T20:00:00Z","capacity":50}'
 ```
 
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
+### Errors
 
-Or do it by hand:
+Every error uses the same shape:
 
-```bash
-$ pnpm install @nestjs/observe
+```json
+{
+  "statusCode": 409,
+  "error": "Conflict",
+  "message": "This event is full",
+  "path": "/api/events/<id>/registrations",
+  "timestamp": "2026-11-13T11:05:45.669Z"
+}
 ```
 
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
+| Status | Meaning |
+|---|---|
+| 400 | Invalid input, malformed id, or an event that has already started |
+| 401 | Missing, invalid or expired token, or wrong credentials |
+| 403 | Trying to modify someone else's event |
+| 404 | Resource not found |
+| 409 | Email already registered, already registered for the event, event full, or capacity below current registrations |
+| 429 | Too many login or register attempts |
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+## Security
 
-## Resources
+- Passwords hashed with bcrypt (cost 12); the hash is excluded from every query except login and never returned
+- Every route requires a JWT by default; only register, login and health are marked public
+- Login failures return the same message and take the same time whether or not the email exists
+- Unknown request fields are rejected, so clients can't set fields like `ownerId`
+- Login and register are limited to 5 attempts per minute per IP
+- Unexpected errors are logged server-side and return a generic message to the client
 
-Check out a few resources that may come in handy when working with NestJS:
+## How capacity is enforced
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Registering runs inside a database transaction that first takes a row lock on the event (`SELECT ... FOR UPDATE`). Concurrent registrations for the same event wait their turn, so the seat count is always checked against up-to-date data. Duplicate registrations are additionally blocked by a unique constraint on `(user_id, event_id)`.
 
-## Support
+Tested by sending five simultaneous registrations to an event with two seats: exactly two succeeded and three were rejected with `409`.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Deployment (Render)
 
-## Stay in touch
+| Setting | Value |
+|---|---|
+| Build command | `npx --yes pnpm@12.18.0 install --frozen-lockfile && npx --yes pnpm@12.18.0 build` |
+| Start command | `node node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js && NODE_ENV=production node dist/main` |
+| Health check path | `/api/health` |
+| Environment | `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` |
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Pending migrations run automatically on every deploy before the app starts. `NODE_ENV` is set in the start command rather than as an environment variable, because setting it during install would skip the dev dependencies the build needs.
 
-## License
+## Project structure
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```
+src/
+  main.ts                 bootstrap: validation, error filter, Swagger, CORS
+  app.module.ts
+  config/                 env validation and shared database options
+  database/               CLI data source and migrations
+  common/                 decorators, DTOs, error filter, shared types and utils
+  modules/
+    auth/                 register, login, JWT strategy and guard
+    users/                user entity and service
+    events/               event CRUD and ownership rules
+    registrations/        registration, cancellation, capacity locking
+    health/               health check
+```
